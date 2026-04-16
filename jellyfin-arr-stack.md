@@ -1,45 +1,45 @@
 # Jellyfin + \*arr Stack
 
-> **Status: Planned / In progress**
-
-## Overview
-
-The goal is a fully self-hosted media automation stack built around Jellyfin as the media server and the \*arr suite for content management, with all download traffic confined inside a VPN client container.
+> **In progress**
 
 ---
 
-## Planned components
+## What this is
+
+Jellyfin as the media server, Sonarr/Radarr/Prowlarr for automation, and a download client that routes all its traffic through a VPN container. Standard self-hosted media stack.
+
+Replacing Plex — Jellyfin is fully open source, no Plex account needed, no telemetry.
+
+---
+
+## Components
 
 | Service | Role |
 |---|---|
-| Jellyfin | Media server (open-source Plex alternative) |
-| Sonarr | TV show monitoring and automation |
-| Radarr | Movie monitoring and automation |
-| Prowlarr | Indexer management for Sonarr/Radarr |
-| Download client | Torrent/usenet client, VPN-confined |
-| VPN client | Confines download traffic to VPN tunnel |
+| Jellyfin | Media server |
+| Sonarr | TV monitoring and download automation |
+| Radarr | Movie monitoring and download automation |
+| Prowlarr | Indexer management for Sonarr and Radarr |
+| Download client | Runs inside the VPN container's network namespace |
+| VPN container | All download traffic exits through this |
 
 ---
 
-## Network design
+## Network setup for downloads
 
-All download traffic will be routed through a dedicated VPN client container. The download client container will have its default gateway set to the VPN container, ensuring that if the VPN drops, download traffic stops rather than leaking over the clearnet.
-
-The \*arr services and Jellyfin itself do not need VPN — only the download client container is confined.
+The download client container has its default gateway set to the VPN container. If the VPN drops, the gateway disappears and traffic stops — it doesn't fall back to clearnet. Jellyfin and the \*arr services don't need VPN and are configured separately.
 
 ```
-Sonarr/Radarr → Download client → VPN container → Internet
-Jellyfin       → NGINX (DMZ)    → Cloudflare    → User
+Sonarr / Radarr
+      │
+      ▼
+Download client  →  VPN container  →  Internet
+      
+Jellyfin  →  NGINX (DMZ)  →  Cloudflare  →  User
 ```
-
----
-
-## Rationale for Jellyfin
-
-Jellyfin is fully open-source with no account requirement or telemetry, making it preferable over Plex for a privacy-conscious homelab. Plex currently runs in parallel while the Jellyfin setup is completed.
 
 ---
 
 ## Container placement
 
-All components will run as LXC containers on RE-SERV (VLAN 50). No component in this stack requires a DMZ placement — public access to Jellyfin will go via NGINX exactly as Plex does today.
+Everything on RE-SERV (VLAN 50). Public access to Jellyfin goes via NGINX the same way Plex does today.

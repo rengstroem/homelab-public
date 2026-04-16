@@ -1,53 +1,30 @@
 # Homelab
 
-A self-hosted infrastructure running on Proxmox VE, built around network segmentation, reverse proxying, and a growing stack of self-hosted services.
+Running on Proxmox VE with a VLAN-segmented UniFi network. Everything public-facing goes through an NGINX reverse proxy in a DMZ VLAN, with Cloudflare in front of that. Backend services sit on a separate internal VLAN and are not directly reachable from the internet.
 
-This repo documents architecture decisions, service configurations, and the reasoning behind design choices. Scripts and automation live in a separate private repo.
+This repo is documentation — architecture, service configs, and why things are set up the way they are. Automation scripts live in a separate private repo.
 
 ---
 
-## Stack at a glance
+## Stack
 
-| Layer | Technology |
+| Layer | What |
 |---|---|
 | Hypervisor | Proxmox VE |
-| Networking | UniFi (VLAN-segmented) |
-| Reverse proxy | NGINX (LXC container) |
-| DNS / edge | Cloudflare |
-| SSL | Cloudflare Origin Certificate, Full (Strict) |
-| Monitoring | GoAccess (NGINX log analysis) |
-| Media | Plex, Jellyfin (planned) |
-| Automation | \*arr stack + VPN-confined download client (planned) |
+| Networking | UniFi, VLAN-segmented |
+| Reverse proxy | NGINX (LXC) |
+| Edge / DNS | Cloudflare |
+| SSL | Cloudflare Origin Cert, Full (Strict) |
+| Log monitoring | GoAccess |
+| Media | Plex (running), Jellyfin + \*arr (in progress) |
 
 ---
 
-## Repository structure
+## Repo layout
 
 ```
-homelab/
-├── architecture/
-│   ├── overview.md              # Design philosophy and goals
-│   ├── network-topology.md      # VLAN segments and trust model
-│   └── proxmox-inventory.md     # CT/VM roster with roles
-├── services/
-│   ├── nginx-reverse-proxy.md
-│   ├── cloudflare-ssl.md
-│   ├── plex.md
-│   ├── jellyfin-arr-stack.md    # WIP / planned
-│   └── goaccess-log-monitoring.md
-├── security/
-│   ├── network-segmentation.md
-│   └── ssl-tls-strategy.md
-└── decisions/
-    ├── adr-001-vlan-segmentation.md
-    └── adr-002-cloudflare-origin-cert.md
+architecture/    # Network topology, Proxmox inventory, overall design
+services/        # Per-service setup and config notes
+security/        # Segmentation rationale, TLS setup
+decisions/       # ADRs — why things are the way they are
 ```
-
----
-
-## Design goals
-
-- **Segmentation by default** — services live in isolated VLANs with explicit inter-VLAN routing rules. Trust is earned, not assumed.
-- **Minimal attack surface** — only necessary ports exposed; public-facing traffic terminates at Cloudflare.
-- **Reproducibility** — configurations documented so rebuilding from scratch is fast.
-- **Security as a first-class concern** — not bolted on after the fact.

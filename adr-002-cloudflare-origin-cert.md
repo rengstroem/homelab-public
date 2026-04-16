@@ -1,4 +1,4 @@
-# ADR-002: Cloudflare Origin Certificate with Full (Strict) Mode
+# ADR-002: Cloudflare Origin Certificate + Full (Strict) SSL
 
 **Date:** 2024  
 **Status:** Accepted
@@ -7,48 +7,30 @@
 
 ## Context
 
-Services are published via Cloudflare as a reverse proxy. Cloudflare supports several SSL modes for the Cloudflare → origin leg: Flexible, Full, and Full (Strict). The choice of mode determines the security of the connection between Cloudflare's edge and the origin server.
-
-A certificate is needed on the origin (NGINX container) to support the stronger modes.
+Services are behind Cloudflare. Cloudflare has three SSL modes for the edge → origin leg: Flexible, Full, Full (Strict). A certificate on the origin is needed for the stronger options.
 
 ---
 
 ## Decision
 
-Use a **Cloudflare Origin Certificate** on the NGINX container and configure Cloudflare SSL mode to **Full (Strict)**.
+Cloudflare Origin Certificate on the NGINX container. SSL mode set to Full (Strict).
 
 ---
 
 ## Alternatives considered
 
-### Flexible mode
-Cloudflare → origin connection is unencrypted. Rejected outright — any network path between Cloudflare and the origin would expose plaintext traffic.
+**Flexible mode** — Cloudflare → origin is unencrypted. Not an option.
 
-### Full mode (with self-signed cert)
-Encrypts the Cloudflare → origin leg but does not validate the certificate. A self-signed cert satisfies Full mode. Rejected because it provides no authentication of the origin — a MITM on the internal path would not be detected.
+**Full mode with self-signed cert** — encrypts the connection but doesn't authenticate the origin. MITM between Cloudflare and NGINX would go undetected. Not good enough when Full (Strict) costs nothing extra.
 
-### Let's Encrypt certificate
-A valid option and would also satisfy Full (Strict). Rejected in favour of the Origin Certificate because:
-- Origin Certificate requires no ACME challenge or renewal automation (15-year validity)
-- Origin Certificate is not browser-trusted, so direct-to-origin access is not silently accepted
-- Simpler to deploy in an environment where Cloudflare is already the DNS provider
+**Let's Encrypt** — also satisfies Full (Strict). Valid option, but renewal automation on an internal container adds complexity for no gain when a 15-year Origin Certificate exists and Cloudflare is already the DNS provider.
 
 ---
 
 ## Consequences
 
-**Positive:**
-- End-to-end encrypted and validated traffic from user to origin
-- Origin IP is not exposed (Cloudflare proxies all traffic)
-- Wildcard coverage means no certificate changes needed when adding subdomains
-- Long validity period (15 years) eliminates renewal overhead
+End-to-end encrypted and authenticated. Cloudflare validates the origin cert before connecting. Origin IP is hidden behind Cloudflare-proxied DNS.
 
-**Negative:**
-- Origin Certificate is only trusted by Cloudflare — direct access to the origin shows a browser certificate error (accepted as intentional behaviour)
-- If Cloudflare were removed from the stack, the certificate would need to be replaced with a publicly trusted one
+The Origin Certificate isn't browser-trusted, so direct access to the origin IP shows a cert error. That's intentional — it's not supposed to be accessed directly.
 
----
-
-## Notes
-
-The intentional non-trust of the Origin Certificate by browsers is considered a feature: it makes visible any attempt to access the origin directly, and does not silently present a valid HTTPS connection to a client that has somehow obtained the origin IP.
+If Cloudflare is ever removed from the stack, the cert needs replacing with a publicly trusted one. Acceptable tradeoff.

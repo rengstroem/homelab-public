@@ -1,45 +1,25 @@
-# Architecture Overview
+# Overview
 
-## Philosophy
+## Why Proxmox
 
-The homelab is designed around principles I apply professionally: defense in depth, least privilege, and explicit trust boundaries. The goal is not just to run services, but to run them in a way that would survive scrutiny — network segmentation that mirrors what you'd expect in a regulated environment, with traffic flows that are deliberate rather than accidental.
+I wanted a hypervisor I could actually own — no licensing headaches, proper LXC support alongside KVM, and a web UI that doesn't get in the way. Most services here run as LXC containers rather than full VMs. Lower overhead, and for things like NGINX or Plex there's no reason to carry a full kernel.
 
-This means more upfront work, but it also means the infrastructure is actually useful as a learning environment for security and platform engineering concepts.
+The VLAN-aware bridge setup in Proxmox (vmbr0 with VLAN tagging) means containers can be placed directly on whatever segment they belong on without needing separate physical interfaces. Works well with the UniFi switch.
 
----
+## Network design
 
-## Why Proxmox VE
+The network is split into four VLANs based on what's running and how much I trust it. Default policy between VLANs is deny — anything that needs to talk across segments has an explicit firewall rule for it.
 
-Proxmox was chosen as the hypervisor for several reasons:
+Public traffic comes in via Cloudflare, hits NGINX in the DMZ, and gets proxied through to whatever service it's headed for. Backend services never have ports open to the internet directly.
 
-- **LXC container support** alongside KVM VMs — most services run as lightweight containers, keeping resource overhead low while maintaining strong isolation
-- **Open source** with an active community and enterprise-grade feature set
-- **VLAN-aware networking** via Linux bridges, making it straightforward to place containers directly on specific VLANs
-- **Web UI + CLI** — manageable both interactively and via automation
+See [network-topology.md](network-topology.md) for the full breakdown.
 
----
+## Containers vs VMs
 
-## Network approach
+LXC for anything that doesn't need its own kernel — NGINX, Plex, GoAccess, the \*arr stack. KVM reserved for things that genuinely need it. Keeps resource usage sensible and makes the inventory easier to reason about.
 
-All services are placed on dedicated VLANs based on their trust level and function. Inter-VLAN routing is handled at the firewall layer with explicit allow rules — there is no blanket allow between segments.
+## What's next
 
-Public-facing traffic is proxied through NGINX in the DMZ VLAN. The NGINX container terminates connections and forwards internally, so backend services are never directly internet-reachable.
-
-See [network-topology.md](network-topology.md) for the full VLAN breakdown.
-
----
-
-## Service philosophy
-
-- Services run as **LXC containers** where possible (lower overhead, still isolated)
-- Each service gets its own container — no co-location of unrelated services
-- Public exposure is always via the reverse proxy, never direct port forwarding
-- SSL terminates at Cloudflare edge with an Origin Certificate securing the Cloudflare → NGINX leg
-
----
-
-## Future direction
-
-- Expand the Jellyfin + \*arr media stack with a VPN-confined download client
-- Add centralised logging and alerting
-- Formalise firewall rules documentation
+- Finish the Jellyfin + \*arr stack with a VPN-confined download client
+- Centralised logging
+- Tighten up and document the firewall ruleset

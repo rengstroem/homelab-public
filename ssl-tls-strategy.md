@@ -1,48 +1,34 @@
-# SSL/TLS Strategy
+# SSL / TLS Strategy
 
-## Overview
-
-SSL/TLS is handled in two distinct legs, both of which are secured. The choice of Cloudflare Full (Strict) mode is deliberate — it is the only mode that provides end-to-end encrypted and validated traffic between the user and the origin server.
-
----
-
-## Two-leg model
+## Two legs, both secured
 
 ```
-User ──HTTPS──► Cloudflare Edge ──HTTPS (Origin Cert)──► NGINX Origin
-     (Cloudflare-managed cert)        (Cloudflare Origin Certificate)
+User ──HTTPS──► Cloudflare ──HTTPS (Origin Cert)──► NGINX
 ```
 
-### Leg 1: User → Cloudflare
-Cloudflare presents a certificate issued by a public CA (managed automatically). End users see a valid, browser-trusted certificate. No configuration needed on the origin for this leg.
+**User → Cloudflare:** Cloudflare manages this with their own certificate. Nothing to do here.
 
-### Leg 2: Cloudflare → NGINX
-A **Cloudflare Origin Certificate** is installed on the NGINX container. Cloudflare validates this certificate before accepting the origin connection. This is what Full (Strict) mode enforces.
+**Cloudflare → NGINX:** Cloudflare Origin Certificate installed on the NGINX container. SSL mode is Full (Strict) — Cloudflare validates the cert before accepting the connection.
 
 ---
 
-## Why Full (Strict) and not just Full?
+## Why Full (Strict) and not just Full
 
-Cloudflare's **Full** mode encrypts the Cloudflare → origin connection but does not validate the certificate — a self-signed cert is accepted. This means the connection is encrypted but not authenticated: a MITM between Cloudflare and the origin would not be detected.
+Full mode encrypts the Cloudflare → origin connection but accepts a self-signed cert. The connection is encrypted but the origin isn't authenticated — a MITM between Cloudflare and the container would not be detected.
 
-**Full (Strict)** adds certificate validation, closing this gap. Since the Origin Certificate is free and straightforward to deploy, there is no reason to accept the weaker guarantee.
+Full (Strict) adds certificate validation. The Origin Certificate is free and takes 10 minutes to set up, so there's no reason to accept the weaker guarantee.
 
 ---
 
-## Certificate details
+## Origin Certificate
 
 | Property | Value |
 |---|---|
 | Type | Cloudflare Origin Certificate |
-| Coverage | Apex domain + wildcard (`*.homelab.example.com`) |
+| Coverage | Apex + wildcard (`*.homelab.example.com`) |
 | Validity | 15 years |
-| Trusted by | Cloudflare only (not browsers directly) |
-| Renewal | Manual, but 15-year validity makes this a non-issue for now |
+| Trusted by | Cloudflare only |
 
----
+Not browser-trusted by design. Direct access to the origin IP without going through Cloudflare shows a certificate error. That's intentional — the origin IP isn't in DNS anyway, but this adds another layer of friction for anyone who finds it.
 
-## Direct access
-
-Because the Origin Certificate is not trusted by browsers, direct access to the origin IP bypassing Cloudflare will show a certificate error. This is intentional — it discourages and makes visible any attempt to bypass the Cloudflare layer.
-
-The origin IP is not published in DNS (all records are Cloudflare-proxied), so direct access requires knowing the IP out-of-band.
+Let's Encrypt would also satisfy Full (Strict) but renewal automation on an internal container is unnecessary overhead when a 15-year cert exists.

@@ -1,25 +1,18 @@
 # GoAccess — NGINX Log Monitoring
 
-## Overview
-
-GoAccess provides real-time and historical analysis of NGINX access logs. It runs as a lightweight process that parses the NGINX log files and serves an HTML dashboard, accessible via the reverse proxy.
+GoAccess parses NGINX access logs and outputs an HTML dashboard. Nothing fancy — it's just a fast way to see what's hitting the proxy without setting up a full logging stack.
 
 ---
 
 ## Access
 
-| Property | Value |
-|---|---|
-| URL | `logs.homelab.example.com` |
-| Source logs | NGINX access logs from CT 101 |
+`logs.homelab.example.com` — proxied through NGINX like everything else.
 
 ---
 
-## Setup pattern
+## Setup
 
-GoAccess reads the NGINX access log and outputs a static HTML report (or a live WebSocket-based dashboard). The output is served by NGINX itself, so no additional service needs to be exposed.
-
-A basic invocation for a static report:
+GoAccess reads the NGINX access log and writes a static HTML report (or runs in real-time mode with a WebSocket connection). Static report generation:
 
 ```bash
 goaccess /var/log/nginx/access.log \
@@ -27,23 +20,12 @@ goaccess /var/log/nginx/access.log \
   -o /var/www/logs/index.html
 ```
 
-For a live dashboard, GoAccess can run in `--real-time-html` mode with a WebSocket port, proxied through NGINX.
+For live mode, GoAccess runs with `--real-time-html` and exposes a WebSocket port that NGINX proxies.
 
 ---
 
-## NGINX configuration
+## Why bother
 
-The `logs.homelab.example.com` server block proxies to the GoAccess output. Access can be restricted at the NGINX level (IP allowlist or basic auth) since this exposes request metadata.
+It's useful for catching unexpected traffic patterns — scanners, misconfigured clients, unusual spikes on a specific subdomain. Takes 10 minutes to set up and gives you an immediate view of what's actually hitting the proxy.
 
----
-
-## Value
-
-GoAccess gives immediate visibility into:
-
-- Request volume and patterns per subdomain
-- HTTP status code distribution
-- Top IPs, user agents, and referrers
-- Response time distribution
-
-Useful for catching unexpected traffic, misconfigured clients, or early signs of scanning/probing activity.
+The `logs` subdomain has restricted access at the NGINX level since it exposes request metadata.

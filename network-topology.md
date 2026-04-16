@@ -1,50 +1,48 @@
 # Network Topology
 
-## Physical setup
+## Setup
 
-A VLAN-aware Linux bridge (`vmbr0`) is configured in Proxmox, connected to a UniFi managed switch. VLANs are trunked to the Proxmox host, allowing individual containers and VMs to be placed on specific segments without requiring separate physical interfaces.
+Proxmox host has a VLAN-aware Linux bridge (`vmbr0`) trunked to a UniFi managed switch. Containers get placed on their VLAN at the bridge level — no need for separate physical NICs per segment.
 
 ---
 
-## VLAN segments
+## VLANs
 
-| VLAN ID | Name | Subnet | Purpose |
+| VLAN | Name | Subnet | What lives here |
 |---|---|---|---|
-| 20 | TV / No-trust | `192.168.20.0/24` | Smart TVs, streaming devices, untrusted IoT |
+| 20 | TV / No-trust | `192.168.20.0/24` | Smart TVs, streaming sticks — gets internet, nothing else |
 | 30 | RE-MGMT | `192.168.30.0/24` | Proxmox management, UniFi controller |
-| 50 | RE-SERV | `192.168.50.0/24` | Internal services (Plex, etc.) |
-| 80 | RE-DMZ | `192.168.80.0/24` | Public-facing services (NGINX reverse proxy) |
+| 50 | RE-SERV | `192.168.50.0/24` | Internal services |
+| 80 | RE-DMZ | `192.168.80.0/24` | Public-facing ingress — only NGINX lives here |
 
 ---
 
-## Trust model
+## Traffic flow
 
 ```
 Internet
    │
-   ▼
-Cloudflare (edge, DDoS protection, DNS)
-   │  HTTPS (Origin Certificate)
-   ▼
-NGINX (CT 101 — RE-DMZ, VLAN 80)
-   │  Internal proxy_pass
-   ▼
-Backend services (RE-SERV, VLAN 50)
+Cloudflare  (DNS + edge proxy)
+   │  HTTPS with Origin Certificate
+NGINX  (CT 101, VLAN 80 — RE-DMZ)
+   │  proxy_pass over internal network
+Backend service  (VLAN 50 — RE-SERV)
 ```
 
-- **VLAN 20 (TV/No-trust):** Devices here have no route to management or service VLANs. Internet access only.
-- **VLAN 30 (RE-MGMT):** Restricted to management traffic. Not reachable from untrusted VLANs.
-- **VLAN 50 (RE-SERV):** Internal services. Reachable from the DMZ proxy but not directly from the internet.
-- **VLAN 80 (RE-DMZ):** The only segment with ports reachable from the internet (via Cloudflare). Contains only the NGINX reverse proxy.
+VLAN 20 has internet access and no route to any other segment. The smart TV firmware situation is what it is — keeping it isolated is the practical response.
+
+VLAN 30 (management) is not reachable from VLAN 50 or 80 except for specific cases where it has to be.
+
+VLAN 80 (DMZ) is the only segment with internet-facing ports, and the only thing in it is the NGINX proxy. If that gets compromised it can talk to RE-SERV on the ports it needs for proxying — it can't roam freely.
 
 ---
 
 ## Inter-VLAN routing
 
-Inter-VLAN routing is handled at the firewall with explicit rules. Default policy between segments is **deny**. Allow rules are added only where there is a documented need (e.g. NGINX on VLAN 80 → specific service ports on VLAN 50).
+Handled at the firewall. Default deny between all segments. Explicit rules where cross-VLAN communication is needed. This way misconfiguration fails closed.
 
 ---
 
 ## DNS
 
-External DNS is managed through Cloudflare. Subdomains resolve to the Cloudflare-proxied IP; Cloudflare forwards to the NGINX container in the DMZ.
+External DNS on Cloudflare. All public subdomains are proxied records (orange cloud) — origin IP doesn't appear in DNS.

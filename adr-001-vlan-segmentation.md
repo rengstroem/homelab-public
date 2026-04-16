@@ -7,47 +7,28 @@
 
 ## Context
 
-A flat home network with all devices on a single broadcast domain provides no isolation between devices. A compromised device has direct network access to all others. This is an unacceptable risk model for an environment running internet-facing services alongside sensitive management interfaces and untrusted consumer devices.
+Flat home network = every device can talk to every other device. That's fine if you trust everything on it. I don't — smart TVs have opaque software and poor update records, and running internet-facing services on the same L2 segment as management interfaces is asking for trouble.
 
 ---
 
 ## Decision
 
-Implement VLAN-based segmentation across four segments:
-
-- **VLAN 20** — Untrusted consumer devices (TVs, streaming hardware)
-- **VLAN 30** — Management plane (Proxmox, UniFi)
-- **VLAN 50** — Internal services
-- **VLAN 80** — DMZ (public-facing ingress only)
-
-Inter-VLAN routing is handled at the firewall with a default-deny policy. Access between segments requires an explicit allow rule.
+Four VLANs (20, 30, 50, 80) segmented by function and trust level. Default deny between segments. Explicit allow rules where cross-VLAN communication is needed.
 
 ---
 
 ## Alternatives considered
 
-### Single flat network
-Rejected. No isolation between devices. A compromised TV or misconfigured container has direct access to management interfaces.
+**Single flat network** — rejected. No isolation. A compromised device or container has a direct path to everything.
 
-### Two-zone model (internal / DMZ only)
-Considered but rejected in favour of finer granularity. A two-zone model would still mix untrusted IoT devices with internal services, and management traffic with general service traffic.
+**Two-zone model (internal / DMZ)** — considered. Simpler, but mixes untrusted IoT with internal services and doesn't give the management plane its own segment. The extra complexity of four VLANs is worth it.
 
 ---
 
 ## Consequences
 
-**Positive:**
-- Blast radius of any single compromise is bounded by VLAN membership
-- Management interfaces are not reachable from service or untrusted segments
-- Internet-facing services are isolated in DMZ; compromise of NGINX does not give direct access to internal services
-- Mirrors enterprise network architecture, making it a useful learning environment
+Gets the job done: compromising one segment doesn't give you the others. Management isn't reachable from service or DMZ VLANs. Untrusted devices are completely isolated.
 
-**Negative:**
-- More complex initial setup (VLAN-aware switch and Proxmox bridge configuration required)
-- Inter-VLAN rules must be maintained as new services are added
+Downside is that inter-VLAN rules need to be maintained as things change. Worth it.
 
----
-
-## Notes
-
-The VLAN IDs (20, 30, 50, 80) were chosen with deliberate gaps to allow future segments without renumbering.
+VLAN IDs have deliberate gaps (20, 30, 50, 80) so new segments can be inserted without renumbering.

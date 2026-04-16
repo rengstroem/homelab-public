@@ -1,52 +1,36 @@
-# Cloudflare SSL / TLS
+# Cloudflare SSL
 
-## Overview
-
-All public-facing services sit behind Cloudflare, which handles DNS and acts as a reverse proxy at the edge. This provides DDoS protection, hides the origin IP, and allows SSL to be managed cleanly in two legs.
+All public services sit behind Cloudflare. It handles DNS, acts as a reverse proxy at the edge, and takes care of DDoS mitigation. The origin IP isn't in DNS.
 
 ---
 
 ## SSL mode: Full (Strict)
 
-Cloudflare's SSL mode is set to **Full (Strict)**. This means:
+Traffic between Cloudflare and the origin (NGINX) is encrypted and the certificate is validated. This rules out MITM on the internal leg.
 
-- Cloudflare serves a valid certificate to end users (managed automatically by Cloudflare)
-- Cloudflare validates the certificate on the origin (NGINX) before accepting the connection
-- A self-signed cert on the origin is **not** accepted — a trusted origin certificate is required
+Full (non-strict) encrypts the connection but accepts a self-signed cert — meaning the origin isn't authenticated. Not good enough.
 
-This prevents a scenario where traffic between Cloudflare and the origin could be intercepted or spoofed.
+Flexible mode (Cloudflare → origin unencrypted) is not something I'd consider.
 
 ---
 
 ## Origin Certificate
 
-A **Cloudflare Origin Certificate** is installed on the NGINX container. This is a certificate issued by Cloudflare specifically for the Cloudflare → origin leg. It:
+Cloudflare issues origin certificates specifically for the Cloudflare → origin leg. It satisfies Full (Strict) but isn't trusted by browsers directly — which is fine, because direct access bypassing Cloudflare isn't the intended path.
 
-- Is trusted by Cloudflare (satisfies Full Strict mode)
-- Is **not** trusted by browsers directly (intentional — direct access bypassing Cloudflare is not the intended path)
-- Has a configurable validity period (set to maximum: 15 years)
+Covers the apex domain and wildcard (`*.homelab.example.com`), so adding subdomains doesn't require touching the cert.
 
-The certificate covers the apex domain and a wildcard (`*.homelab.example.com`), so adding new subdomains requires no certificate changes.
+Validity is set to 15 years. Let's Encrypt renewal automation on an internal-only container is more hassle than it's worth when this exists.
 
----
-
-## Certificate installation
-
-The Origin Certificate and private key are stored on the NGINX container at:
+Cert and key on the NGINX container:
 
 ```
 /etc/ssl/certs/cloudflare-origin.pem
 /etc/ssl/private/cloudflare-origin.key
 ```
 
-All NGINX server blocks reference these paths.
-
 ---
 
 ## DNS
 
-All subdomains are managed as Cloudflare **proxied** (orange cloud) A records pointing to the origin IP. This ensures:
-
-- Origin IP is not exposed in DNS lookups
-- Traffic always flows through Cloudflare's edge
-- Cloudflare WAF and DDoS protection apply to all subdomains
+All public subdomains are proxied A records (orange cloud in Cloudflare). Origin IP stays out of DNS and traffic always goes through the edge.

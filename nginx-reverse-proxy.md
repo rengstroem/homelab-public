@@ -1,37 +1,32 @@
 # NGINX Reverse Proxy
 
-## Overview
-
-NGINX runs in an LXC container on the RE-DMZ VLAN (VLAN 80). It is the single ingress point for all public-facing services — no backend services are directly exposed to the internet.
-
-All traffic arrives via Cloudflare (proxied), meaning the public IP belongs to Cloudflare's edge network. NGINX receives connections from Cloudflare and forwards them to the appropriate backend container on RE-SERV (VLAN 50).
+LXC container on RE-DMZ (VLAN 80). Single ingress point for everything public-facing. Backend services don't have ports open to the internet — they only talk to NGINX.
 
 ---
 
-## Container placement
+## Container
 
 | Property | Value |
 |---|---|
 | CT ID | 101 |
 | VLAN | RE-DMZ (VLAN 80) |
-| Role | Reverse proxy / SSL termination point |
 
 ---
 
 ## SSL
 
-SSL is handled in two legs:
+Two legs:
 
-1. **Client → Cloudflare:** Standard HTTPS via Cloudflare's edge certificate (managed by Cloudflare)
-2. **Cloudflare → NGINX:** HTTPS using a Cloudflare Origin Certificate installed on the NGINX container
+- **Client → Cloudflare:** Cloudflare handles this with their own managed cert. Nothing to configure.
+- **Cloudflare → NGINX:** Cloudflare Origin Certificate installed on the container. Cloudflare SSL mode is Full (Strict), so it validates the cert before accepting the connection.
 
-Cloudflare SSL mode is set to **Full (Strict)**, which validates the origin certificate and prevents MITM between Cloudflare and the origin. See [cloudflare-ssl.md](cloudflare-ssl.md) for details.
+Details in [cloudflare-ssl.md](cloudflare-ssl.md).
 
 ---
 
 ## Virtual host pattern
 
-Each service gets its own server block. A typical service configuration follows this pattern:
+Each service gets its own server block. Standard pattern:
 
 ```nginx
 server {
@@ -53,15 +48,15 @@ server {
 
 ---
 
-## Access logging
+## Currently proxied
 
-NGINX access logs are parsed and visualised by GoAccess. See [goaccess-log-monitoring.md](goaccess-log-monitoring.md).
+| Subdomain | Backend |
+|---|---|
+| `plex.homelab.example.com` | Plex on RE-SERV |
+| `logs.homelab.example.com` | GoAccess on RE-SERV |
 
 ---
 
-## Services currently proxied
+## Logging
 
-| Subdomain | Backend | Notes |
-|---|---|---|
-| `plex.homelab.example.com` | Plex CT on RE-SERV | Public |
-| `logs.homelab.example.com` | GoAccess on RE-SERV | Internal use |
+Access logs feed into GoAccess — see [goaccess-log-monitoring.md](goaccess-log-monitoring.md).
