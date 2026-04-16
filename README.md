@@ -15,8 +15,7 @@ This repo is documentation — architecture, service configs, and why things are
 | Reverse proxy | NGINX (LXC) |
 | Edge / DNS | Cloudflare |
 | SSL | Cloudflare Origin Cert, Full (Strict) |
-| Log monitoring | GoAccess |
-| Media | Plex (running), Jellyfin + \*arr (in progress) |
+| Log monitoring | GoAccess ||
 
 ---
 

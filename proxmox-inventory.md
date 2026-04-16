@@ -6,6 +6,8 @@
 |---|---|---|---|
 | 101 | nginx-proxy | RE-DMZ (80) | NGINX reverse proxy — only thing in the DMZ |
 | 106 | plex | RE-SERV (50) | Plex Media Server |
+| 108 | Actualbudget | RE-SERV (50) | Budgeting application |
+| 107 | Authentik | RE-SERV (50) | Identity provider |
 
 IPs are static within each VLAN subnet but not listed here.
 
@@ -15,11 +17,8 @@ IPs are static within each VLAN subnet but not listed here.
 
 | Hostname | VLAN | Role |
 |---|---|---|
-| jellyfin | RE-SERV (50) | Jellyfin — replacing Plex eventually |
-| vpn-client | RE-SERV (50) | VPN container — download client routes through this |
-| sonarr | RE-SERV (50) | TV automation |
-| radarr | RE-SERV (50) | Movie automation |
-| prowlarr | RE-SERV (50) | Indexer management for the \*arr stack |
+| vpn-client | RE-SERV (50) | VPN container |
+| Nextcloud | RE-SERV (50) | Nextcloud... |
 
 ---
 

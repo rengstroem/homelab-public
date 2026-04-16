@@ -16,10 +16,12 @@ See [network-topology.md](network-topology.md) for the full breakdown.
 
 ## Containers vs VMs
 
-LXC for anything that doesn't need its own kernel — NGINX, Plex, GoAccess, the \*arr stack. KVM reserved for things that genuinely need it. Keeps resource usage sensible and makes the inventory easier to reason about.
+LXC for anything that doesn't need its own kernel — NGINX, Plex, GoAccess, KVM reserved for things that genuinely need it. Keeps resource usage sensible and makes the inventory easier to reason about.
 
 ## What's next
 
-- Finish the Jellyfin + \*arr stack with a VPN-confined download client
 - Centralised logging
 - Tighten up and document the firewall ruleset
+- Deploy a bunch more services
+- Nextcloud
+- Get Authentik to work
